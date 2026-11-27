@@ -211,6 +211,11 @@ class ClockWindow(Gtk.ApplicationWindow):
         self.transparent_background = options["transparent_background"] and rgba_visual is not None
         if rgba_visual is not None:
             self.set_visual(rgba_visual)
+        # Mutter may leave an initially borderless XWayland window without a frame.
+        # Give GTK a title bar before mapping so it can toggle decorations itself.
+        desktops = os.environ.get("XDG_CURRENT_DESKTOP", "").split(":")
+        if "GNOME" in desktops:
+            self.set_titlebar(Gtk.HeaderBar(title=self.get_title(), show_close_button=True))
         style = Gtk.CssProvider()
         style.load_from_data(b".clock-clear { background-color: transparent; background-image: none; box-shadow: none; border: none; }")
         self.get_style_context().add_provider(style, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
