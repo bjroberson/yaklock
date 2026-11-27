@@ -240,56 +240,9 @@ class ClockWindow(Gtk.ApplicationWindow):
 
         self.menu = Gtk.Menu()
         self.menu.attach_to_widget(self.face, None)
-        top = Gtk.CheckMenuItem(label="Always on Top")
-        top.set_active(self.always_on_top)
-        top.connect("toggled", self.set_always_on_top)
-        self.menu.append(top)
-        date_item = Gtk.MenuItem(label="Date")
-        date_menu = Gtk.Menu()
-        date_item.set_submenu(date_menu)
-        self.menu.append(date_item)
-
-        date_options = []
-        first_option = None
-        for label, date_format in DATE_FORMATS:
-            option = Gtk.RadioMenuItem.new_with_label_from_widget(first_option, label)
-            if first_option is None:
-                first_option = option
-            date_options.append((option, date_format))
-            date_menu.append(option)
-        for option, date_format in date_options:
-            if date_format == self.date_format:
-                option.set_active(True)
-        for option, date_format in date_options:
-            option.connect("toggled", self.set_date_format, date_format)
-        appearance = Gtk.MenuItem(label="Appearance…")
-        appearance.connect("activate", self.show_appearance)
-        self.menu.append(appearance)
-        transparent = Gtk.CheckMenuItem(label="Transparent Background")
-        transparent.set_active(self.transparent_background)
-        transparent.set_sensitive(rgba_visual is not None)
-        transparent.connect("toggled", self.set_transparent_background)
-        self.menu.append(transparent)
-        decorations = Gtk.MenuItem(label="Window Decorations")
-        decoration_menu = Gtk.Menu()
-        decorations.set_submenu(decoration_menu)
-        self.menu.append(decorations)
-        first_option = None
-        for label, mode in DECORATION_MODES:
-            option = Gtk.RadioMenuItem.new_with_label_from_widget(first_option, label)
-            if first_option is None:
-                first_option = option
-            decoration_menu.append(option)
-            if mode == self.decoration_mode:
-                option.set_active(True)
-            option.connect("toggled", self.set_decoration_mode, mode)
-        save = Gtk.MenuItem(label="Save Options Now")
-        save.connect("activate", lambda _item: self.save_options(self.current_options(), interactive=True))
-        self.menu.append(save)
-        save_on_close = Gtk.CheckMenuItem(label="Save Options on Close")
-        save_on_close.set_active(self.save_on_close)
-        save_on_close.connect("toggled", self.set_save_on_close)
-        self.menu.append(save_on_close)
+        preferences = Gtk.MenuItem(label="Preferences…")
+        preferences.connect("activate", self.show_preferences)
+        self.menu.append(preferences)
         close = Gtk.MenuItem(label="Close")
         close.connect("activate", lambda _item: self.close())
         self.menu.append(close)
@@ -306,7 +259,7 @@ class ClockWindow(Gtk.ApplicationWindow):
     def current_options(self):
         return {key: getattr(self, key) for key in DEFAULT_OPTIONS}
 
-    def save_options(self, options, interactive=False):
+    def save_options(self, options, parent=None):
         changes = {key: value for key, value in options.items()
                    if value != self.saved_options[key]}
         if not changes:
@@ -315,9 +268,10 @@ class ClockWindow(Gtk.ApplicationWindow):
             write_options(changes)
         except (OSError, GLib.Error) as error:
             print(f"YaKlock could not save options: {error}", file=sys.stderr)
-            if interactive:
+            if parent is not None:
                 dialog = Gtk.MessageDialog(
-                    transient_for=self, modal=True, message_type=Gtk.MessageType.ERROR,
+                    transient_for=parent, modal=True, destroy_with_parent=True,
+                    message_type=Gtk.MessageType.ERROR,
                     buttons=Gtk.ButtonsType.CLOSE, text="Could not save clock options",
                 )
                 dialog.format_secondary_text(str(error))
@@ -326,9 +280,9 @@ class ClockWindow(Gtk.ApplicationWindow):
         else:
             self.saved_options.update(changes)
 
-    def set_save_on_close(self, option):
+    def set_save_on_close(self, option, dialog):
         self.save_on_close = option.get_active()
-        self.save_options(dict(self.saved_options, save_on_close=self.save_on_close), interactive=True)
+        self.save_options(dict(self.saved_options, save_on_close=self.save_on_close), parent=dialog)
 
     def save_when_closed(self, _window):
         if self.save_on_close:
@@ -346,10 +300,9 @@ class ClockWindow(Gtk.ApplicationWindow):
         self.set_decorated(decorated)
         Gtk.Widget.set_opacity(self, 1.0 if active else self.inactive_opacity)
 
-    def set_decoration_mode(self, option, mode):
-        if option.get_active():
-            self.decoration_mode = mode
-            self.update_window_appearance()
+    def set_decoration_mode(self, option):
+        self.decoration_mode = option.get_active_id()
+        self.update_window_appearance()
 
     def set_transparent_background(self, option):
         self.transparent_background = option.get_active()
@@ -364,26 +317,63 @@ class ClockWindow(Gtk.ApplicationWindow):
         else:
             style.remove_class("clock-clear")
 
-    def show_appearance(self, _item):
-        dialog = Gtk.Dialog(title="YaKlock Appearance", transient_for=self, modal=True)
+    def show_preferences(self, _item):
+        dialog = Gtk.Dialog(title="YaKlock Preferences", transient_for=self, modal=True,
+                            destroy_with_parent=True)
+        dialog.add_button("Save Options Now", Gtk.ResponseType.APPLY)
         dialog.add_button("Close", Gtk.ResponseType.CLOSE)
         grid = Gtk.Grid(column_spacing=16, row_spacing=8, margin=16)
         dialog.get_content_area().add(grid)
-        options = (
+
+        choices = (
+            ("Date format", DATE_FORMATS, self.date_format, self.set_date_format),
+            ("Window decorations", DECORATION_MODES, self.decoration_mode,
+             self.set_decoration_mode),
+        )
+        for row, (label, entries, value, callback) in enumerate(choices):
+            combo = Gtk.ComboBoxText()
+            for name, option_id in entries:
+                combo.append(option_id, name)
+            combo.set_active_id(value)
+            combo.connect("changed", callback)
+            grid.attach(Gtk.Label(label=label, xalign=0, mnemonic_widget=combo), 0, row, 1, 1)
+            grid.attach(combo, 1, row, 1, 1)
+
+        sizes = (
             ("Time size (%)", "clock_size", self.clock_size, 25, 100, 5),
             ("Date size (px)", "date_size", self.date_size, 8, 24, 1),
             ("Inactive opacity (%)", "inactive_opacity", self.inactive_opacity * 100,
              10, 100, 5),
         )
-        for row, (label, setting, value, minimum, maximum, step) in enumerate(options):
-            grid.attach(Gtk.Label(label=label, xalign=0), 0, row, 1, 1)
+        for row, (label, setting, value, minimum, maximum, step) in enumerate(sizes, len(choices)):
             scale = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, minimum, maximum, step)
             scale.set_size_request(180, -1)
             scale.set_value(value)
             scale.connect("value-changed", self.change_appearance, setting)
+            grid.attach(Gtk.Label(label=label, xalign=0, mnemonic_widget=scale), 0, row, 1, 1)
             grid.attach(scale, 1, row, 1, 1)
-        dialog.connect("response", lambda widget, _response: widget.destroy())
+
+        toggles = (
+            ("Always on Top", self.always_on_top, self.set_always_on_top, True, ()),
+            ("Transparent Background", self.transparent_background, self.set_transparent_background,
+             self.get_screen().get_rgba_visual() is not None, ()),
+            ("Save Options on Close", self.save_on_close, self.set_save_on_close, True, (dialog,)),
+        )
+        for row, (label, value, callback, sensitive, args) in enumerate(
+            toggles, len(choices) + len(sizes)
+        ):
+            toggle = Gtk.CheckButton(label=label, active=value, sensitive=sensitive)
+            toggle.connect("toggled", callback, *args)
+            grid.attach(toggle, 0, row, 2, 1)
+
+        dialog.connect("response", self.preferences_response)
         dialog.show_all()
+
+    def preferences_response(self, dialog, response):
+        if response == Gtk.ResponseType.APPLY:
+            self.save_options(self.current_options(), parent=dialog)
+        else:
+            dialog.destroy()
 
     def change_appearance(self, scale, setting):
         value = scale.get_value()
@@ -394,10 +384,9 @@ class ClockWindow(Gtk.ApplicationWindow):
             setattr(self, setting, value)
             self.resize_face(self.face, self.face.get_allocation())
 
-    def set_date_format(self, option, date_format):
-        if option.get_active():
-            self.date_format = date_format
-            self.refresh()
+    def set_date_format(self, option):
+        self.date_format = option.get_active_id()
+        self.refresh()
 
     def refresh(self):
         now = datetime.now()
