@@ -4,5 +4,6 @@ Name=YaKlock
 Comment=Green digital desktop clock
 Exec=yaklock
 Icon=yaklock
+StartupWMClass=Yaklock
 Terminal=false
 Categories=Utility;

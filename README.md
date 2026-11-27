@@ -15,7 +15,7 @@ On Debian or Ubuntu, open a terminal and paste:
 ```bash
 # Install dependencies
 sudo apt update
-sudo apt install -y git python3 python3-cairo python3-gi gir1.2-gtk-3.0
+sudo apt install -y git desktop-file-utils python3 python3-cairo python3-gi gir1.2-gtk-3.0
 
 # Get YaKlock
 git clone https://github.com/bjroberson/yaklock.git
@@ -26,16 +26,20 @@ DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
 mkdir -p "$HOME/.local/bin" "$DATA_HOME/applications" "$DATA_HOME/icons"
 
 install -m 755 yaklock "$HOME/.local/bin/yaklock"
-install -m 644 io.github.bjroberson.yaklock.desktop "$DATA_HOME/applications/"
+desktop-file-install --dir="$DATA_HOME/applications" \
+    --set-key=Exec --set-value="\"$HOME/.local/bin/yaklock\"" \
+    io.github.bjroberson.yaklock.desktop
 cp -R icons/. "$DATA_HOME/icons/"
 
 # Start YaKlock
 "$HOME/.local/bin/yaklock" &
 ```
 
-YaKlock is also available from your desktop's application menu, provided
-`~/.local/bin` is on your desktop session's `PATH`. Right-click the clock
-to customize it.
+YaKlock is also available from your desktop's application menu. The installed
+launcher uses the absolute executable path so it works even when GNOME Shell
+starts without `~/.local/bin` on its `PATH`. If you installed an earlier version,
+rerun the user installation commands above to update the launcher.
+Right-click the clock to customize it.
 
 <p>
   <img src="docs/screenshots/RightClick.png" alt="YaKlock right-click menu" width="377">
