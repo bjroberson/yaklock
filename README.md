@@ -37,7 +37,10 @@ YaKlock is also available from your desktop's application menu, provided
 `~/.local/bin` is on your desktop session's `PATH`. Right-click the clock
 to customize it.
 
-![YaKlock Appearance dialog with sliders for time size, date size, and inactive opacity](docs/screenshots/Appearance.png)
+<p>
+  <img src="docs/screenshots/RightClick.png" alt="YaKlock right-click menu" width="377">
+  <img src="docs/screenshots/Appearance.png" alt="YaKlock Appearance dialog with sliders for time size, date size, and inactive opacity" width="298">
+</p>
 
 The checkout includes its window icons. Settings are saved in
 `${XDG_CONFIG_HOME:-$HOME/.config}/yaklock/options.json`. YaKlock starts with
