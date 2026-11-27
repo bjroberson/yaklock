@@ -10,38 +10,80 @@ Developed and tested on Ubuntu 26.04 LTS with GNOME and KDE Plasma (Wayland sess
 
 ## Install and run
 
-On Ubuntu or Kubuntu, open a terminal and paste:
+### 1. Install dependencies
+
+On Ubuntu or Kubuntu, install the packages YaKlock needs:
+
+```bash
+sudo apt update && sudo apt install -y git desktop-file-utils python3 python3-cairo python3-gi gir1.2-gtk-3.0
+```
+
+### 2. Get YaKlock
+
+Download YaKlock into a new directory named `yaklock`:
+
+```bash
+git clone https://github.com/bjroberson/yaklock.git
+```
+
+### 3. Install YaKlock
+
+Run this from the directory where you cloned YaKlock. It installs the clock, application-menu launcher, and icons for your user account:
 
 ```bash
 (
 set -e
-
-# Install dependencies
-sudo apt update
-sudo apt install -y git desktop-file-utils python3 python3-cairo python3-gi gir1.2-gtk-3.0
-
-# Get YaKlock
-git clone https://github.com/bjroberson/yaklock.git
 cd yaklock
-
-# Install YaKlock for your user
 DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
 mkdir -p "$HOME/.local/bin" "$DATA_HOME/applications" "$DATA_HOME/icons"
-
 install -m 755 yaklock "$HOME/.local/bin/yaklock"
 desktop-file-install --dir="$DATA_HOME/applications" \
     --set-key=Exec --set-value="\"$HOME/.local/bin/yaklock\"" \
     io.github.bjroberson.yaklock.desktop
 cp -R icons/. "$DATA_HOME/icons/"
-
-# Start YaKlock
-"$HOME/.local/bin/yaklock" &
 )
 ```
 
-YaKlock is also available from your desktop's application menu. The installed
-launcher uses the absolute executable path so it works even when GNOME Shell
-starts without `~/.local/bin` on its `PATH`. Right-click the clock to customize it.
+### 4. Start YaKlock
+
+Launch YaKlock from your application menu, or run:
+
+```bash
+"$HOME/.local/bin/yaklock" &
+```
+
+Right-click the clock to customize it. You can also pin YaKlock to your dock or panel from the application menu.
+
+## Optional setup
+
+### Start YaKlock at login
+
+If you want YaKlock to start automatically when you sign in, run this after installing it:
+
+```bash
+(
+set -e
+AUTOSTART="${XDG_CONFIG_HOME:-$HOME/.config}/autostart"
+mkdir -p "$AUTOSTART"
+cp "${XDG_DATA_HOME:-$HOME/.local/share}/applications/io.github.bjroberson.yaklock.desktop" "$AUTOSTART/"
+)
+```
+
+Launching YaKlock again opens an additional clock.
+
+To disable automatic startup:
+
+```bash
+rm -f "${XDG_CONFIG_HOME:-$HOME/.config}/autostart/io.github.bjroberson.yaklock.desktop"
+```
+
+### Add a desktop shortcut
+
+On KDE Plasma, you can add YaKlock to your desktop from the application menu. On GNOME, desktop shortcuts depend on your desktop-icons extension and may require allowing the launcher to run.
+
+## Customize YaKlock
+
+Right-click the clock to open its menu and appearance settings.
 
 <p>
   <img src="docs/screenshots/RightClick.png" alt="YaKlock right-click menu" width="377">
