@@ -1,6 +1,10 @@
 # YaKlock
 
-A resizable Linux desktop clock with a green seven-segment display.
+YaKlock is a transparent, sticky digital clock for your Linux desktop that keeps the time in sight and stays out of your way.
+
+Resize it, keep it above your windows, adjust its opacity, or hide the decorations until only the digits remain. Right-click to customize it; YaKlock remembers your settings.
+
+Developed and tested on KDE Plasma.
 
 ![YaKlock displaying bright green digits and the date over a desktop window](docs/screenshots/Example.png)
 
