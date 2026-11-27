@@ -8,6 +8,9 @@ Developed and tested on Ubuntu 26.04 LTS with GNOME and KDE Plasma (Wayland sess
 
 ![YaKlock displaying bright green digits and the date over a desktop window](docs/screenshots/Example.png)
 
+
+Track [known bugs](https://github.com/bjroberson/yaklock/issues?q=is%3Aissue+is%3Aopen+label%3Abug), [planned work](https://github.com/bjroberson/yaklock/issues), and [release milestones](https://github.com/bjroberson/yaklock/milestones).
+
 ## Install and run
 
 ### 1. Install dependencies
