@@ -38,8 +38,8 @@ desktop session's `PATH`. Copy `io.github.bjroberson.yaklock.desktop` to
 
 The development environment is KDE Plasma on Wayland on Ubuntu 26.04 LTS.
 The clock prefers XWayland when an X display is available so it can request
-Always on Top. The release checkout still needs a graphical smoke test on that
-desktop. Rendering and settings were tested independently of the installed app.
+Always on Top. 
+
 
 ## License
 
