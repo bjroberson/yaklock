@@ -334,7 +334,7 @@ class ClockWindow(Gtk.ApplicationWindow):
             self.decoration_mode == "automatic" and active and not self.transparent_background
         )
         self.set_decorated(decorated)
-        self.set_opacity(1.0 if active else self.inactive_opacity)
+        Gtk.Widget.set_opacity(self, 1.0 if active else self.inactive_opacity)
 
     def set_decoration_mode(self, option, mode):
         if option.get_active():
