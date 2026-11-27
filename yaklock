@@ -1,0 +1,430 @@
+#!/usr/bin/python3
+# Copyright (C) 2026 Brian Roberson
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+import json
+import os
+import sys
+from datetime import datetime
+from pathlib import Path
+from sys import byteorder
+
+import cairo
+
+# XWayland lets the window request the desktop's always-on-top state.
+if os.environ.get("DISPLAY"):
+    os.environ.setdefault("GDK_BACKEND", "x11,wayland")
+
+import gi
+
+gi.require_version("Gtk", "3.0")
+gi.require_version("Gdk", "3.0")
+from gi.repository import Gdk, GdkPixbuf, GLib, Gtk
+
+
+ICON_NAME = "yaklock"
+DIGITS = (
+    "abcdef", "bc", "abdeg", "abcdg", "bcfg",
+    "acdfg", "acdefg", "abc", "abcdefg", "abcdfg",
+)
+HORIZONTAL = ((5, 0), (39, 0), (44, 5), (39, 10), (5, 10), (0, 5))
+VERTICAL = ((0, 5), (5, 0), (10, 5), (10, 38), (5, 43), (0, 38))
+SEGMENTS = (
+    (HORIZONTAL, 5, 0), (VERTICAL, 44, 5), (VERTICAL, 44, 52),
+    (HORIZONTAL, 5, 90), (VERTICAL, 0, 52), (VERTICAL, 0, 5),
+    (HORIZONTAL, 5, 45),
+)
+DIGIT_ADVANCE = 66
+COLON_ADVANCE = 30
+FACE_HEIGHT = 100
+INACTIVE_OPACITY = 0.45
+LIT_COLOR = (38, 255, 64)
+LIT_RGB = tuple(channel / 255 for channel in LIT_COLOR)
+DATE_FORMATS = (
+    ("Hidden", ""),
+    ("Tuesday, November 24", "%A, %B %-d"),
+    ("November 24, 2026", "%B %-d, %Y"),
+    ("24 November 2026", "%-d %B %Y"),
+)
+
+
+DECORATION_MODES = (
+    ("Automatic", "automatic"),
+    ("Always Show", "show"),
+    ("Always Hide", "hide"),
+)
+DEFAULT_OPTIONS = {
+    "decoration_mode": "automatic",
+    "always_on_top": True,
+    "date_format": "",
+    "clock_size": 100,
+    "date_size": 12,
+    "inactive_opacity": INACTIVE_OPACITY,
+    "transparent_background": False,
+    "save_on_close": True,
+}
+CONFIG_FILE = Path(GLib.get_user_config_dir()) / "yaklock" / "options.json"
+
+
+def load_options():
+    options = DEFAULT_OPTIONS.copy()
+    try:
+        saved = json.loads(CONFIG_FILE.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return options
+    if not isinstance(saved, dict):
+        return options
+
+    for key in ("always_on_top", "transparent_background", "save_on_close"):
+        if isinstance(saved.get(key), bool):
+            options[key] = saved[key]
+    if saved.get("date_format") in [value for _, value in DATE_FORMATS]:
+        options["date_format"] = saved["date_format"]
+    if saved.get("decoration_mode") in [value for _, value in DECORATION_MODES]:
+        options["decoration_mode"] = saved["decoration_mode"]
+    for key, minimum, maximum in (
+        ("clock_size", 25, 100), ("date_size", 8, 24), ("inactive_opacity", 0.1, 1),
+    ):
+        value = saved.get(key)
+        if type(value) in (int, float) and minimum <= value <= maximum:
+            options[key] = value
+    return options
+
+
+def write_options(options):
+    CONFIG_FILE.parent.mkdir(parents=True, exist_ok=True)
+    GLib.file_set_contents(str(CONFIG_FILE), (json.dumps(options, indent=2) + "\n").encode())
+
+
+def draw_face(cr, width, height, value, date, clock_size, date_size, transparent):
+    if not transparent:
+        cr.set_source_rgb(0, 0, 0)
+        cr.paint()
+    padding = min(12, height / 8)
+    date_height = min(28, height / 4) if date else 0
+    draw_row(cr, width, padding, height - 2 * padding - date_height, value, clock_size, transparent)
+    if date_height > 2:
+        cr.select_font_face("Sans")
+        cr.set_font_size(date_size)
+        extents = cr.text_extents(date)
+        available_width = max(1, width - 2 * padding)
+        fit = min(1, available_width / max(1, extents.width),
+                  (date_height - 2) / max(1, extents.height))
+        if fit < 1:
+            cr.set_font_size(date_size * fit)
+            extents = cr.text_extents(date)
+        cr.set_source_rgb(*LIT_RGB)
+        cr.move_to((width - extents.width) / 2 - extents.x_bearing,
+                   height - padding - date_height / 2
+                   - extents.y_bearing - extents.height / 2)
+        cr.show_text(date)
+
+
+def draw_row(cr, width, top, height, value, clock_size, transparent):
+    row_width = 6 * DIGIT_ADVANCE + 2 * COLON_ADVANCE - 12
+    scale = max(0, min((width - 24) / row_width, height / FACE_HEIGHT))
+    scale *= clock_size / 100
+    if not scale:
+        return
+
+    cr.save()
+    cr.translate((width - row_width * scale) / 2,
+                 top + (height - FACE_HEIGHT * scale) / 2)
+    cr.scale(scale, scale)
+    for char in value:
+        if char == ":":
+            cr.set_source_rgb(*LIT_RGB)
+            cr.rectangle(10, 30, 10, 10)
+            cr.rectangle(10, 60, 10, 10)
+            cr.fill()
+            cr.translate(COLON_ADVANCE, 0)
+            continue
+
+        lit = DIGITS[int(char)]
+        for name, (points, x, y) in zip("abcdefg", SEGMENTS):
+            if transparent and name not in lit:
+                continue
+            color = LIT_RGB if name in lit else (0.025, 0.12, 0.035)
+            cr.set_source_rgb(*color)
+            first, *rest = points
+            cr.move_to(first[0] + x, first[1] + y)
+            for px, py in rest:
+                cr.line_to(px + x, py + y)
+            cr.close_path()
+            cr.fill()
+        cr.translate(DIGIT_ADVANCE, 0)
+    cr.restore()
+
+
+def render_face(width, height, value, date="", clock_size=100, date_size=12,
+                transparent=False):
+    pixel_format = cairo.FORMAT_A8 if transparent else cairo.FORMAT_RGB24
+    surface = cairo.ImageSurface(pixel_format, width, height)
+    draw_face(cairo.Context(surface), width, height, value, date, clock_size, date_size,
+              transparent)
+    surface.flush()
+    source = memoryview(surface.get_data())
+    stride = surface.get_stride()
+    if transparent:
+        # Cairo supplies glyph coverage. The pixbuf stores unpremultiplied color.
+        rgba = bytearray(bytes((*LIT_COLOR, 0)) * (width * height))
+        for y in range(height):
+            start = y * width * 4
+            rgba[start + 3:start + width * 4:4] = source[y * stride:y * stride + width]
+        return GdkPixbuf.Pixbuf.new_from_bytes(
+            GLib.Bytes.new(bytes(rgba)), GdkPixbuf.Colorspace.RGB, True, 8,
+            width, height, width * 4,
+        )
+
+    rgb = bytearray(width * height * 3)
+    # Cairo RGB24 stores each pixel as a native-endian 0x00RRGGBB word.
+    channels = (2, 1, 0) if byteorder == "little" else (1, 2, 3)
+    for y in range(height):
+        row = source[y * stride:y * stride + width * 4]
+        start = y * width * 3
+        end = start + width * 3
+        for target, offset in enumerate(channels):
+            rgb[start + target:end:3] = row[offset::4].tobytes()
+
+    return GdkPixbuf.Pixbuf.new_from_bytes(
+        GLib.Bytes.new(bytes(rgb)), GdkPixbuf.Colorspace.RGB, False, 8,
+        width, height, width * 3,
+    )
+
+
+class ClockWindow(Gtk.ApplicationWindow):
+    def __init__(self, app):
+        super().__init__(application=app, title="YaKlock")
+        self.set_default_size(460, 136)
+        self.set_size_request(205, 64)
+        self.saved_options = load_options()
+        options = self.saved_options
+        self.always_on_top = options["always_on_top"]
+        self.set_keep_above(self.always_on_top)
+        self.clock_size = options["clock_size"]
+        self.date_size = options["date_size"]
+        self.inactive_opacity = options["inactive_opacity"]
+        self.date_format = options["date_format"]
+        self.save_on_close = options["save_on_close"]
+        self.decoration_mode = options["decoration_mode"]
+        rgba_visual = self.get_screen().get_rgba_visual()
+        self.transparent_background = options["transparent_background"] and rgba_visual is not None
+        if rgba_visual is not None:
+            self.set_visual(rgba_visual)
+        style = Gtk.CssProvider()
+        style.load_from_data(b".clock-clear { background-color: transparent; background-image: none; box-shadow: none; border: none; }")
+        self.get_style_context().add_provider(style, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+        self.update_background_style()
+        self.update_window_appearance()
+        self.connect("notify::is-active", self.update_window_appearance)
+
+        self.face = Gtk.EventBox(visible_window=False)
+        self.face.connect("button-press-event", self.on_face_button)
+        self.image = Gtk.Image()
+        overlay = Gtk.Overlay()
+        overlay.add(self.face)
+        overlay.add_overlay(self.image)
+        overlay.set_overlay_pass_through(self.image, True)
+        self.add(overlay)
+
+        self.menu = Gtk.Menu()
+        self.menu.attach_to_widget(self.face, None)
+        top = Gtk.CheckMenuItem(label="Always on Top")
+        top.set_active(self.always_on_top)
+        top.connect("toggled", self.set_always_on_top)
+        self.menu.append(top)
+        date_item = Gtk.MenuItem(label="Date")
+        date_menu = Gtk.Menu()
+        date_item.set_submenu(date_menu)
+        self.menu.append(date_item)
+
+        date_options = []
+        first_option = None
+        for label, date_format in DATE_FORMATS:
+            option = Gtk.RadioMenuItem.new_with_label_from_widget(first_option, label)
+            if first_option is None:
+                first_option = option
+            date_options.append((option, date_format))
+            date_menu.append(option)
+        for option, date_format in date_options:
+            if date_format == self.date_format:
+                option.set_active(True)
+        for option, date_format in date_options:
+            option.connect("toggled", self.set_date_format, date_format)
+        appearance = Gtk.MenuItem(label="Appearance…")
+        appearance.connect("activate", self.show_appearance)
+        self.menu.append(appearance)
+        transparent = Gtk.CheckMenuItem(label="Transparent Background")
+        transparent.set_active(self.transparent_background)
+        transparent.set_sensitive(rgba_visual is not None)
+        transparent.connect("toggled", self.set_transparent_background)
+        self.menu.append(transparent)
+        decorations = Gtk.MenuItem(label="Window Decorations")
+        decoration_menu = Gtk.Menu()
+        decorations.set_submenu(decoration_menu)
+        self.menu.append(decorations)
+        first_option = None
+        for label, mode in DECORATION_MODES:
+            option = Gtk.RadioMenuItem.new_with_label_from_widget(first_option, label)
+            if first_option is None:
+                first_option = option
+            decoration_menu.append(option)
+            if mode == self.decoration_mode:
+                option.set_active(True)
+            option.connect("toggled", self.set_decoration_mode, mode)
+        save = Gtk.MenuItem(label="Save Options Now")
+        save.connect("activate", lambda _item: self.save_options(self.current_options(), interactive=True))
+        self.menu.append(save)
+        save_on_close = Gtk.CheckMenuItem(label="Save Options on Close")
+        save_on_close.set_active(self.save_on_close)
+        save_on_close.connect("toggled", self.set_save_on_close)
+        self.menu.append(save_on_close)
+        close = Gtk.MenuItem(label="Close")
+        close.connect("activate", lambda _item: self.close())
+        self.menu.append(close)
+        self.menu.show_all()
+
+        self.value = ("", "")
+        self.frame = None
+        self.face.connect("size-allocate", self.resize_face)
+        self.refresh()
+        timer = GLib.timeout_add(100, self.refresh)
+        self.connect("destroy", lambda _window: GLib.source_remove(timer))
+        self.connect("destroy", self.save_when_closed)
+
+    def current_options(self):
+        return {key: getattr(self, key) for key in DEFAULT_OPTIONS}
+
+    def save_options(self, options, interactive=False):
+        try:
+            write_options(options)
+        except (OSError, GLib.Error) as error:
+            print(f"YaKlock could not save options: {error}", file=sys.stderr)
+            if interactive:
+                dialog = Gtk.MessageDialog(
+                    transient_for=self, modal=True, message_type=Gtk.MessageType.ERROR,
+                    buttons=Gtk.ButtonsType.CLOSE, text="Could not save clock options",
+                )
+                dialog.format_secondary_text(str(error))
+                dialog.connect("response", lambda widget, _response: widget.destroy())
+                dialog.show_all()
+        else:
+            self.saved_options = options
+
+    def set_save_on_close(self, option):
+        self.save_on_close = option.get_active()
+        self.save_options(dict(self.saved_options, save_on_close=self.save_on_close), interactive=True)
+
+    def save_when_closed(self, _window):
+        if self.save_on_close:
+            self.save_options(self.current_options())
+
+    def set_always_on_top(self, option):
+        self.always_on_top = option.get_active()
+        self.set_keep_above(self.always_on_top)
+
+    def update_window_appearance(self, *_args):
+        active = self.is_active()
+        decorated = self.decoration_mode == "show" or (
+            self.decoration_mode == "automatic" and active and not self.transparent_background
+        )
+        self.set_decorated(decorated)
+        self.set_opacity(1.0 if active else self.inactive_opacity)
+
+    def set_decoration_mode(self, option, mode):
+        if option.get_active():
+            self.decoration_mode = mode
+            self.update_window_appearance()
+
+    def set_transparent_background(self, option):
+        self.transparent_background = option.get_active()
+        self.update_background_style()
+        self.update_window_appearance()
+        self.resize_face(self.face, self.face.get_allocation())
+
+    def update_background_style(self):
+        style = self.get_style_context()
+        if self.transparent_background:
+            style.add_class("clock-clear")
+        else:
+            style.remove_class("clock-clear")
+
+    def show_appearance(self, _item):
+        dialog = Gtk.Dialog(title="YaKlock Appearance", transient_for=self, modal=True)
+        dialog.add_button("Close", Gtk.ResponseType.CLOSE)
+        grid = Gtk.Grid(column_spacing=16, row_spacing=8, margin=16)
+        dialog.get_content_area().add(grid)
+        options = (
+            ("Time size (%)", "clock_size", self.clock_size, 25, 100, 5),
+            ("Date size (px)", "date_size", self.date_size, 8, 24, 1),
+            ("Inactive opacity (%)", "inactive_opacity", self.inactive_opacity * 100,
+             10, 100, 5),
+        )
+        for row, (label, setting, value, minimum, maximum, step) in enumerate(options):
+            grid.attach(Gtk.Label(label=label, xalign=0), 0, row, 1, 1)
+            scale = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, minimum, maximum, step)
+            scale.set_size_request(180, -1)
+            scale.set_value(value)
+            scale.connect("value-changed", self.change_appearance, setting)
+            grid.attach(scale, 1, row, 1, 1)
+        dialog.connect("response", lambda widget, _response: widget.destroy())
+        dialog.show_all()
+
+    def change_appearance(self, scale, setting):
+        value = scale.get_value()
+        if setting == "inactive_opacity":
+            self.inactive_opacity = value / 100
+            self.update_window_appearance()
+        else:
+            setattr(self, setting, value)
+            self.resize_face(self.face, self.face.get_allocation())
+
+    def set_date_format(self, option, date_format):
+        if option.get_active():
+            self.date_format = date_format
+            self.refresh()
+
+    def refresh(self):
+        now = datetime.now()
+        value = (now.strftime("%H:%M:%S"), now.strftime(self.date_format))
+        if value != self.value:
+            self.value = value
+            self.resize_face(self.face, self.face.get_allocation())
+        return GLib.SOURCE_CONTINUE
+
+    def resize_face(self, _face, allocation):
+        frame = (allocation.width, allocation.height, *self.value, self.clock_size,
+                 self.date_size, self.transparent_background)
+        if frame != self.frame and self.value[0]:
+            self.frame = frame
+            self.image.set_from_pixbuf(render_face(*frame))
+
+    def on_face_button(self, _face, event):
+        if event.button == Gdk.BUTTON_SECONDARY:
+            self.menu.popup_at_pointer(event)
+            return True
+        permanently_borderless = self.decoration_mode == "hide" or (
+            self.decoration_mode == "automatic" and self.transparent_background
+        )
+        if permanently_borderless and event.button == Gdk.BUTTON_PRIMARY:
+            self.begin_move_drag(event.button, int(event.x_root), int(event.y_root), event.time)
+            return True
+        return False
+
+
+def activate(app):
+    window = app.get_active_window()
+    if window is None:
+        bundled_icons = Path(__file__).resolve().parent / "icons"
+        if bundled_icons.is_dir():
+            Gtk.IconTheme.get_default().append_search_path(str(bundled_icons))
+        Gtk.Window.set_default_icon_name(ICON_NAME)
+        window = ClockWindow(app)
+        window.show_all()
+    window.present()
+
+
+if __name__ == "__main__":
+    application = Gtk.Application(application_id="io.github.bjroberson.yaklock")
+    application.connect("activate", activate)
+    raise SystemExit(application.run())

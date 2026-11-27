@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=YaKlock
+Comment=Green digital desktop clock
+Exec=yaklock
+Icon=yaklock
+Terminal=false
+Categories=Utility;
