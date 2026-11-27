@@ -8,31 +8,40 @@ Developed and tested on KDE Plasma.
 
 ![YaKlock displaying bright green digits and the date over a desktop window](docs/screenshots/Example.png)
 
-## Run from the checkout
+## Install and run
 
-The app uses Python 3, Pycairo, and PyGObject with GTK 3, GDK, GdkPixbuf, and GLib.
-On Debian or Ubuntu, install them with:
+On Debian or Ubuntu, open a terminal and paste:
 
-```sh
-sudo apt install python3 python3-cairo python3-gi gir1.2-gtk-3.0
-./yaklock
+```bash
+# Install dependencies
+sudo apt update
+sudo apt install -y git python3 python3-cairo python3-gi gir1.2-gtk-3.0
+
+# Get YaKlock
+git clone https://github.com/bjroberson/yaklock.git
+cd yaklock
+
+# Install YaKlock for your user
+DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
+mkdir -p "$HOME/.local/bin" "$DATA_HOME/applications" "$DATA_HOME/icons"
+
+install -m 755 yaklock "$HOME/.local/bin/yaklock"
+install -m 644 io.github.bjroberson.yaklock.desktop "$DATA_HOME/applications/"
+cp -R icons/. "$DATA_HOME/icons/"
+
+# Start YaKlock
+"$HOME/.local/bin/yaklock" &
 ```
 
-Right-click the clock to customize its date, appearance, and Always on Top
-setting, or to save your options.
+YaKlock is also available from your desktop's application menu, provided
+`~/.local/bin` is on your desktop session's `PATH`. Right-click the clock
+to customize it.
 
 ![YaKlock Appearance dialog with sliders for time size, date size, and inactive opacity](docs/screenshots/Appearance.png)
 
 The checkout includes its window icons. Settings are saved in
 `${XDG_CONFIG_HOME:-$HOME/.config}/yaklock/options.json`. YaKlock starts with
 fresh settings alongside an existing Seven-Segment Clock installation.
-
-## Desktop launcher
-
-For an application-menu entry, place the executable in a directory on your
-desktop session's `PATH`. Copy `io.github.bjroberson.yaklock.desktop` to
-`${XDG_DATA_HOME:-$HOME/.local/share}/applications/` and merge the contents of
-`icons/` into `${XDG_DATA_HOME:-$HOME/.local/share}/icons/`.
 
 ## Desktop environment
 
