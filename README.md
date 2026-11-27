@@ -1,10 +1,10 @@
 # YaKlock
 
-YaKlock is a transparent, sticky digital clock for your Linux desktop that keeps the time in sight and stays out of your way.
+YaKlock is a transparent, sticky digital clock for Ubuntu and Kubuntu desktops that keeps the time in sight and stays out of your way.
 
 Resize it, keep it above your windows, adjust its opacity, or hide the decorations until only the digits remain. Right-click to customize it; YaKlock remembers your settings.
 
-Developed and tested on KDE Plasma.
+Developed and tested on Ubuntu 26.04 LTS with GNOME and KDE Plasma (Wayland sessions).
 
 ![YaKlock displaying bright green digits and the date over a desktop window](docs/screenshots/Example.png)
 
@@ -13,6 +13,9 @@ Developed and tested on KDE Plasma.
 On Debian or Ubuntu, open a terminal and paste:
 
 ```bash
+(
+set -e
+
 # Install dependencies
 sudo apt update
 sudo apt install -y git desktop-file-utils python3 python3-cairo python3-gi gir1.2-gtk-3.0
@@ -33,13 +36,12 @@ cp -R icons/. "$DATA_HOME/icons/"
 
 # Start YaKlock
 "$HOME/.local/bin/yaklock" &
+)
 ```
 
 YaKlock is also available from your desktop's application menu. The installed
 launcher uses the absolute executable path so it works even when GNOME Shell
-starts without `~/.local/bin` on its `PATH`. If you installed an earlier version,
-rerun the user installation commands above to update the launcher.
-Right-click the clock to customize it.
+starts without `~/.local/bin` on its `PATH`. Right-click the clock to customize it.
 
 <p>
   <img src="docs/screenshots/RightClick.png" alt="YaKlock right-click menu" width="377">
@@ -52,7 +54,7 @@ fresh settings alongside an existing Seven-Segment Clock installation.
 
 ## Desktop environment
 
-The development environment is KDE Plasma on Wayland on Ubuntu 26.04 LTS.
+YaKlock has been tested on Ubuntu 26.04 LTS with GNOME and KDE Plasma in Wayland sessions.
 The clock prefers XWayland when an X display is available so it can request
 Always on Top. 
 
