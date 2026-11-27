@@ -2,6 +2,7 @@
 # Copyright (C) 2026 Brian Roberson
 # SPDX-License-Identifier: GPL-3.0-or-later
 
+import fcntl
 import json
 import os
 import sys
@@ -91,9 +92,14 @@ def load_options():
     return options
 
 
-def write_options(options):
+def write_options(changes):
     CONFIG_FILE.parent.mkdir(parents=True, exist_ok=True)
-    GLib.file_set_contents(str(CONFIG_FILE), (json.dumps(options, indent=2) + "\n").encode())
+    # Lock a separate file so replacing options.json cannot invalidate the lock.
+    with CONFIG_FILE.with_suffix(".lock").open("a") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        options = load_options()
+        options.update(changes)
+        GLib.file_set_contents(str(CONFIG_FILE), (json.dumps(options, indent=2) + "\n").encode())
 
 
 def draw_face(cr, width, height, value, date, clock_size, date_size, transparent):
@@ -301,8 +307,12 @@ class ClockWindow(Gtk.ApplicationWindow):
         return {key: getattr(self, key) for key in DEFAULT_OPTIONS}
 
     def save_options(self, options, interactive=False):
+        changes = {key: value for key, value in options.items()
+                   if value != self.saved_options[key]}
+        if not changes:
+            return
         try:
-            write_options(options)
+            write_options(changes)
         except (OSError, GLib.Error) as error:
             print(f"YaKlock could not save options: {error}", file=sys.stderr)
             if interactive:
@@ -314,7 +324,7 @@ class ClockWindow(Gtk.ApplicationWindow):
                 dialog.connect("response", lambda widget, _response: widget.destroy())
                 dialog.show_all()
         else:
-            self.saved_options = options
+            self.saved_options.update(changes)
 
     def set_save_on_close(self, option):
         self.save_on_close = option.get_active()

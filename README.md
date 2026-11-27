@@ -95,6 +95,9 @@ Right-click the clock to open its menu and appearance settings.
 
 The checkout includes its window icons. Settings are saved in
 `${XDG_CONFIG_HOME:-$HOME/.config}/yaklock/options.json`.
+Each window loads the saved options when it opens. Saving updates only the
+options changed in that window. If two windows change the same option, the
+last save wins.
 
 ## Desktop environment
 
