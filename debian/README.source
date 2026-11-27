@@ -1,0 +1,52 @@
+Building the YaKlock binary package
+===================================
+
+Install build-essential and debhelper from your distribution, then run this
+command from the source checkout:
+
+    dpkg-buildpackage -us -uc -b
+
+The output is ../yaklock_0.7-1_all.deb. The package is architecture-independent
+and can be built and used on amd64 without bundling any libraries. Update the
+version in debian/changelog for subsequent releases.
+
+Install a local copy with:
+
+    sudo apt install ./yaklock_0.7-1_all.deb
+
+APT uses the system Python 3, PyGObject, Pycairo, and GTK 3. The package places
+the executable, desktop entry, and hicolor icons under /usr. If an earlier
+manual installation exists in ~/.local, it can take precedence in the desktop
+menu or PATH. Use /usr/bin/yaklock to launch the packaged copy directly.
+
+YaKlock still uses ${XDG_CONFIG_HOME:-$HOME/.config}/yaklock/options.json
+and its adjacent lock file. Installation, upgrade, removal, and purge do
+not change those per-user files.
+
+The dependency floors target Debian 12 and Ubuntu 22.04 or newer. Always on
+Top uses X11 or XWayland when available and depends on the window manager.
+
+Build automation
+================
+
+The Debian package workflow runs on relevant pull requests and supports
+manual runs. It builds on an amd64 Ubuntu runner, verifies the packaged
+executable, desktop entry, and icons, and uploads the .deb and SHA256SUMS
+as a GitHub Actions artifact. Each build has its own checksum.
+
+Validation of the accepted package
+==================================
+
+Package: yaklock_0.7-1_all.deb
+SHA256: 47b41ef229ab3381227c9bcf60ca2765bcb7bc0296d5b0a1c84e2beb651d0f42
+
+* Interactive GNOME on lappy: PASS, owner UAT accepted.
+* Upgrade from an older installed package on lappy: INCONCLUSIVE.
+* A transient dpkg-preconfigure warning appeared during owner UAT and did
+  not recur in subsequent testing.
+* Separate packaging checks on Ubuntu 26.04 amd64: APT install simulation,
+  isolated dpkg install, prepared version-to-version upgrade, removal and
+  purge, with existing preferences and lock file preserved. Concurrent
+  saves to different preferences survived reload.
+* The packaged launcher opened a window and the bundled icon resolved
+  in live KDE Plasma and headless GNOME Shell/Mutter, both over XWayland.
