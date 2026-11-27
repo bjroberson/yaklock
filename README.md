@@ -10,7 +10,7 @@ Developed and tested on Ubuntu 26.04 LTS with GNOME and KDE Plasma (Wayland sess
 
 ## Install and run
 
-On Debian or Ubuntu, open a terminal and paste:
+On Ubuntu or Kubuntu, open a terminal and paste:
 
 ```bash
 (
