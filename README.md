@@ -48,3 +48,13 @@ Copyright © 2026 Brian Roberson.
 YaKlock, including its launcher and bundled icons, is licensed under the GNU
 General Public License, version 3 or any later version
 (`GPL-3.0-or-later`). See [LICENSE](LICENSE).
+
+## AI-assisted development
+
+YaKlock is a personal project developed with help from OpenAI's
+ChatGPT and Codex for design, coding, debugging, and testing.
+The human maintainer sets the direction, reviews changes, performs
+manual testing, and makes the final merge and release decisions.
+
+Bugs are still bugs, regardless of who—or what—wrote them.
+Please report them in [GitHub Issues](https://github.com/bjroberson/yaklock/issues).
