@@ -86,12 +86,13 @@ On KDE Plasma, you can add YaKlock to your desktop from the application menu. On
 
 ## Customize YaKlock
 
-Right-click the clock to open its menu and appearance settings.
+Right-click the clock and choose **Preferences…** to change the date format,
+clock and date size, inactive opacity, transparency, window decorations, and
+Always on Top in one window. Changes apply to the clock as you make them.
+Use **Save Options Now** to save them immediately, or leave **Save Options on
+Close** enabled to save them when you close the clock.
 
-<p>
-  <img src="docs/screenshots/RightClick.png" alt="YaKlock right-click menu" width="377">
-  <img src="docs/screenshots/Appearance.png" alt="YaKlock Appearance dialog with sliders for time size, date size, and inactive opacity" width="298">
-</p>
+![YaKlock Preferences window showing appearance, date, and window settings](docs/screenshots/Preferences.png)
 
 The checkout includes its window icons. Settings are saved in
 `${XDG_CONFIG_HOME:-$HOME/.config}/yaklock/options.json`.
