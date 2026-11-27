@@ -20,7 +20,7 @@ import gi
 
 gi.require_version("Gtk", "3.0")
 gi.require_version("Gdk", "3.0")
-from gi.repository import Gdk, GdkPixbuf, GLib, Gtk
+from gi.repository import Gdk, GdkPixbuf, Gio, GLib, Gtk
 
 
 ICON_NAME = "yaklock"
@@ -217,11 +217,32 @@ class ClockWindow(Gtk.ApplicationWindow):
         self.transparent_background = options["transparent_background"] and rgba_visual is not None
         if rgba_visual is not None:
             self.set_visual(rgba_visual)
+        menu = Gio.Menu()
+        menu.append("Preferences…", "win.preferences")
+        menu.append("Close", "win.close")
+        for name, callback in (("preferences", self.show_preferences), ("close", self.close)):
+            action = Gio.SimpleAction.new(name, None)
+            action.connect("activate", lambda _action, _parameter, run: run(), callback)
+            self.add_action(action)
+
         # Mutter may leave an initially borderless XWayland window without a frame.
         # Give GTK a title bar before mapping so it can toggle decorations itself.
         desktops = os.environ.get("XDG_CURRENT_DESKTOP", "").split(":")
+        layout = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         if "GNOME" in desktops:
-            self.set_titlebar(Gtk.HeaderBar(title=self.get_title(), show_close_button=True))
+            header = Gtk.HeaderBar(title=self.get_title(), show_close_button=True)
+            self.menu_control = Gtk.MenuButton(menu_model=menu, tooltip_text="Clock menu")
+            self.menu_control.set_image(Gtk.Image.new_from_icon_name("open-menu-symbolic",
+                                                                   Gtk.IconSize.BUTTON))
+            self.menu_control.get_accessible().set_name("Clock menu")
+            header.pack_end(self.menu_control)
+            self.set_titlebar(header)
+        else:
+            menubar_model = Gio.Menu()
+            menubar_model.append_submenu("_Clock", menu)
+            self.menu_control = Gtk.MenuBar.new_from_model(menubar_model)
+            layout.pack_start(self.menu_control, False, False, 0)
+        self.menu_control.set_no_show_all(True)
         style = Gtk.CssProvider()
         style.load_from_data(b".clock-clear { background-color: transparent; background-image: none; box-shadow: none; border: none; }")
         self.get_style_context().add_provider(style, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
@@ -236,17 +257,11 @@ class ClockWindow(Gtk.ApplicationWindow):
         overlay.add(self.face)
         overlay.add_overlay(self.image)
         overlay.set_overlay_pass_through(self.image, True)
-        self.add(overlay)
+        layout.pack_start(overlay, True, True, 0)
+        self.add(layout)
 
-        self.menu = Gtk.Menu()
+        self.menu = Gtk.Menu.new_from_model(menu)
         self.menu.attach_to_widget(self.face, None)
-        preferences = Gtk.MenuItem(label="Preferences…")
-        preferences.connect("activate", self.show_preferences)
-        self.menu.append(preferences)
-        close = Gtk.MenuItem(label="Close")
-        close.connect("activate", lambda _item: self.close())
-        self.menu.append(close)
-        self.menu.show_all()
 
         self.value = ("", "")
         self.frame = None
@@ -298,6 +313,7 @@ class ClockWindow(Gtk.ApplicationWindow):
             self.decoration_mode == "automatic" and active and not self.transparent_background
         )
         self.set_decorated(decorated)
+        self.menu_control.set_visible(decorated)
         Gtk.Widget.set_opacity(self, 1.0 if active else self.inactive_opacity)
 
     def set_decoration_mode(self, option):
@@ -317,7 +333,7 @@ class ClockWindow(Gtk.ApplicationWindow):
         else:
             style.remove_class("clock-clear")
 
-    def show_preferences(self, _item):
+    def show_preferences(self):
         dialog = Gtk.Dialog(title="YaKlock Preferences", transient_for=self, modal=True,
                             destroy_with_parent=True)
         dialog.add_button("Save Options Now", Gtk.ResponseType.APPLY)
