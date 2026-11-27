@@ -91,8 +91,7 @@ Right-click the clock to open its menu and appearance settings.
 </p>
 
 The checkout includes its window icons. Settings are saved in
-`${XDG_CONFIG_HOME:-$HOME/.config}/yaklock/options.json`. YaKlock starts with
-fresh settings alongside an existing Seven-Segment Clock installation.
+`${XDG_CONFIG_HOME:-$HOME/.config}/yaklock/options.json`.
 
 ## Desktop environment
 
