@@ -1,8 +1,8 @@
 # YaKlock
 
-A resizable Linux desktop clock with a green seven-segment display. Right-click
-the clock to show the date, change its appearance, toggle Always on Top, or
-save your options.
+A resizable Linux desktop clock with a green seven-segment display.
+
+![YaKlock displaying bright green digits and the date over a desktop window](docs/screenshots/Example.png)
 
 ## Run from the checkout
 
@@ -13,6 +13,11 @@ On Debian or Ubuntu, install them with:
 sudo apt install python3 python3-cairo python3-gi gir1.2-gtk-3.0
 ./yaklock
 ```
+
+Right-click the clock to customize its date, appearance, and Always on Top
+setting, or to save your options.
+
+![YaKlock Appearance dialog with sliders for time size, date size, and inactive opacity](docs/screenshots/Appearance.png)
 
 The checkout includes its window icons. Settings are saved in
 `${XDG_CONFIG_HOME:-$HOME/.config}/yaklock/options.json`. YaKlock starts with
