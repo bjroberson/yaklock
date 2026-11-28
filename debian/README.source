@@ -1,0 +1,75 @@
+Developer build instructions
+============================
+
+Install build-essential and debhelper from your distribution, then run this
+command from the source checkout:
+
+    dpkg-buildpackage -us -uc -b
+
+The output is ../yaklock_0.7-1_all.deb. The package is architecture-independent
+and can be built and used on amd64 without bundling any libraries. Update the
+version in debian/changelog for subsequent releases.
+
+End-user installation
+=====================
+
+When the package is available, download it from
+https://github.com/bjroberson/yaklock/releases. From the download directory,
+install it with:
+
+    sudo apt install ./yaklock_0.7-1_all.deb
+
+APT resolves the runtime dependencies automatically from the configured
+distribution repositories. The package uses the system Python 3, PyGObject,
+Pycairo, and GTK 3. It places
+the executable, desktop entry, and hicolor icons under /usr. If an earlier
+manual installation exists in ~/.local, it can take precedence in the desktop
+menu or PATH. Use /usr/bin/yaklock to launch the packaged copy directly.
+
+YaKlock still uses ${XDG_CONFIG_HOME:-$HOME/.config}/yaklock/options.json
+and its adjacent lock file. Installation, upgrade, removal, and purge do
+not change those per-user files.
+
+The dependency floors target Debian 12 and Ubuntu 22.04 or newer. Always on
+Top uses X11 or XWayland when available and depends on the window manager.
+
+Build automation
+================
+
+The Debian package workflow runs on relevant pull requests and supports
+manual runs. It builds on an amd64 Ubuntu runner, verifies the packaged
+executable, desktop entry, and icons, and uploads the .deb and SHA256SUMS
+as a GitHub Actions artifact. The CI artifact is subject to Actions
+retention. Public downloads are distributed as separate GitHub Release assets.
+
+Manual release distribution
+===========================
+
+1. Select the approved .deb built from the source intended for the release.
+2. In the directory containing that package, verify the matching checksum with
+   sha256sum -c SHA256SUMS. If needed, generate SHA256SUMS from the exact
+   approved package using sha256sum yaklock_0.7-1_all.deb > SHA256SUMS.
+   Substitute the release's package filename for later versions.
+3. In GitHub Releases, attach the .deb and its matching SHA256SUMS as assets
+   to the release for that version. Verify that the uploaded package matches
+   the checksum before publishing.
+
+Release attachment and publication are manual. The workflow uploads only
+the CI artifact.
+
+Validation of the accepted package
+==================================
+
+Package: yaklock_0.7-1_all.deb
+SHA256: 47b41ef229ab3381227c9bcf60ca2765bcb7bc0296d5b0a1c84e2beb651d0f42
+
+* Interactive GNOME user acceptance testing (UAT): PASS.
+* Upgrade from an older installed package: INCONCLUSIVE.
+* A transient dpkg-preconfigure warning appeared during UAT and did not
+  recur in subsequent testing.
+* Package lifecycle checks on Ubuntu 26.04 amd64 passed: APT install simulation,
+  isolated dpkg install, prepared version-to-version upgrade, removal and
+  purge, with existing preferences and lock file preserved. Concurrent
+  saves to different preferences survived reload.
+* Desktop launcher and bundled icon lookup passed in live KDE Plasma and
+  headless GNOME Shell/Mutter, both over XWayland.

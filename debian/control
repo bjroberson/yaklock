@@ -1,0 +1,23 @@
+Source: yaklock
+Section: utils
+Priority: optional
+Maintainer: Brian Roberson <273380181+bjroberson@users.noreply.github.com>
+Build-Depends: debhelper-compat (= 13)
+Standards-Version: 4.7.4
+Rules-Requires-Root: no
+Homepage: https://github.com/bjroberson/yaklock
+Vcs-Git: https://github.com/bjroberson/yaklock.git
+Vcs-Browser: https://github.com/bjroberson/yaklock
+
+Package: yaklock
+Architecture: all
+Depends:
+ ${misc:Depends},
+ gir1.2-gtk-3.0 (>= 3.24),
+ python3 (>= 3.10),
+ python3-cairo (>= 1.20),
+ python3-gi (>= 3.42),
+Description: customizable seven-segment desktop clock
+ YaKlock displays the time and an optional date in a resizable GTK window.
+ Its preferences include transparency, inactive opacity, window decorations,
+ and an always-on-top request where supported by the window manager.

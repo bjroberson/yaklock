@@ -4,14 +4,27 @@ YaKlock is a transparent, sticky digital clock for Ubuntu and Kubuntu desktops t
 
 Resize it, keep it above your windows, adjust its opacity, or hide the decorations until only the digits remain. Right-click to customize it; YaKlock remembers your settings.
 
-Developed and tested on Ubuntu 26.04 LTS with GNOME and KDE Plasma (Wayland sessions).
+## Download YaKlock
+
+When a Debian package is available, download the `.deb` from the
+[GitHub Releases page](https://github.com/bjroberson/yaklock/releases).
+For version 0.7-1, open a terminal in the download directory and run:
+
+```bash
+sudo apt install ./yaklock_0.7-1_all.deb
+```
+
+APT resolves the runtime dependencies automatically. After installation,
+launch YaKlock from your application menu.
 
 ![YaKlock displaying bright green digits and the date over a desktop window](docs/screenshots/Example.png)
 
 
 Track [known bugs](https://github.com/bjroberson/yaklock/issues?q=is%3Aissue+is%3Aopen+label%3Abug), [planned work](https://github.com/bjroberson/yaklock/issues), and [release milestones](https://github.com/bjroberson/yaklock/milestones).
 
-## Install and run
+## Install from source
+
+If you prefer to install YaKlock from a source checkout, follow these steps.
 
 ### 1. Install dependencies
 
