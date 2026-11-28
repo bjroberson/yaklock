@@ -4,8 +4,6 @@ YaKlock is a transparent, sticky digital clock for Ubuntu and Kubuntu desktops t
 
 Resize it, keep it above your windows, adjust its opacity, or hide the decorations until only the digits remain. Right-click to customize it; YaKlock remembers your settings.
 
-Developed and tested on Ubuntu 26.04 LTS with GNOME and KDE Plasma (Wayland sessions).
-
 ## Download YaKlock
 
 When a Debian package is available, download the `.deb` from the
