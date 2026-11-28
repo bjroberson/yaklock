@@ -1,5 +1,5 @@
-Building the YaKlock binary package
-===================================
+Developer build instructions
+============================
 
 Install build-essential and debhelper from your distribution, then run this
 command from the source checkout:
@@ -10,11 +10,18 @@ The output is ../yaklock_0.7-1_all.deb. The package is architecture-independent
 and can be built and used on amd64 without bundling any libraries. Update the
 version in debian/changelog for subsequent releases.
 
-Install a local copy with:
+End-user installation
+=====================
+
+When the package is available, download it from
+https://github.com/bjroberson/yaklock/releases. From the download directory,
+install it with:
 
     sudo apt install ./yaklock_0.7-1_all.deb
 
-APT uses the system Python 3, PyGObject, Pycairo, and GTK 3. The package places
+APT resolves the runtime dependencies automatically from the configured
+distribution repositories. The package uses the system Python 3, PyGObject,
+Pycairo, and GTK 3. It places
 the executable, desktop entry, and hicolor icons under /usr. If an earlier
 manual installation exists in ~/.local, it can take precedence in the desktop
 menu or PATH. Use /usr/bin/yaklock to launch the packaged copy directly.
@@ -32,7 +39,23 @@ Build automation
 The Debian package workflow runs on relevant pull requests and supports
 manual runs. It builds on an amd64 Ubuntu runner, verifies the packaged
 executable, desktop entry, and icons, and uploads the .deb and SHA256SUMS
-as a GitHub Actions artifact. Each build has its own checksum.
+as a GitHub Actions artifact. The CI artifact is subject to Actions
+retention. Public downloads are distributed as separate GitHub Release assets.
+
+Manual release distribution
+===========================
+
+1. Select the approved .deb built from the source intended for the release.
+2. In the directory containing that package, verify the matching checksum with
+   sha256sum -c SHA256SUMS. If needed, generate SHA256SUMS from the exact
+   approved package using sha256sum yaklock_0.7-1_all.deb > SHA256SUMS.
+   Substitute the release's package filename for later versions.
+3. In GitHub Releases, attach the .deb and its matching SHA256SUMS as assets
+   to the release for that version. Verify that the uploaded package matches
+   the checksum before publishing.
+
+Release attachment and publication are manual. The workflow uploads only
+the CI artifact.
 
 Validation of the accepted package
 ==================================
